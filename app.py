@@ -150,4 +150,6 @@ def servir_imagen(filename):
 # =========================================
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5000)
+    port = int(os.environ.get("PORT", 10000))  # Obtiene el puerto de Render
+    app.run(debug=True, host='0.0.0.0', port=port)  # Asegura que se escuche en todas las IPs
+
