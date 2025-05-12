@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Buongiorno - Menú del Día</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Playfair Display', serif; }
+    .dropdown-content { 
+      display: none; 
+    }
+    .dropdown-content.show {
+      display: block;
+    }
+    .menu-image {
+      width: 100px;
+      height: 100px;
+      object-fit: cover;
+      border-radius: 0.5rem;
+    }
+    .image-placeholder {
+      width: 100px;
+      height: 100px;
+      background-color: #e5e7eb;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 0.5rem;
+    }
+  </style>
+</head>
+<body class="bg-white text-gray-800">
+  <div class="max-w-6xl mx-auto px-4 py-6">
+    <!-- Encabezado -->
+    <div class="text-center mb-6">
+      <h1 class="text-5xl text-green-700 mb-2">Buongiorno</h1>
+      <h2 class="text-2xl text-green-600">Menú del Día</h2>
+      
+    </div>
+
+    <!-- Filtro por categoría -->
+    <div class="relative mb-8 w-64 mx-auto">
+      <div class="dropdown relative">
+        <button id="dropdownButton" class="w-full bg-white px-4 py-2 rounded-lg border border-gray-300 shadow-sm text-left">
+          Todas las categorías ▼
+        </button>
+        <div id="dropdownMenu" class="dropdown-content absolute z-10 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1">
+          <a href="#" class="block px-4 py-2 hover:bg-gray-100 filter-btn" data-categoria="Todo">Todo el menú</a>
+          <a href="#" class="block px-4 py-2 hover:bg-gray-100 filter-btn" data-categoria="Entrada">Entradas</a>
+          <a href="#" class="block px-4 py-2 hover:bg-gray-100 filter-btn" data-categoria="Platos Fuertes">Platos Fuertes</a>
+          <a href="#" class="block px-4 py-2 hover:bg-gray-100 filter-btn" data-categoria="Postre">Postres</a>
+          <a href="#" class="block px-4 py-2 hover:bg-gray-100 filter-btn" data-categoria="Bebida">Bebidas</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Contenedor del Menú -->
+    <div id="menuContainer" class="space-y-10">
+      <!-- El menú se cargará aquí dinámicamente -->
+    </div>
+  </div>
+
+  <script>
+    // Variables globales
+    let menuData = {};
+    let currentCategory = 'Todo';
+    const baseImagePath = '/multimedia/'; // Ruta base para las imágenes
+
+    // Función para cargar los datos del menú
+    async function loadMenuData() {
+      try {
+        const response = await fetch('http://localhost:5000/api/menu');
+        
+        if (!response.ok) {
+          throw new Error(`Error HTTP: ${response.status}`);
+        }
+        
+        menuData = await response.json();
+        console.log('Datos recibidos:', menuData);
+        
+        if (!menuData || Object.keys(menuData).length === 0) {
+          throw new Error('El menú está vacío');
+        }
+        
+        renderMenu(menuData);
+      } catch (error) {
+        console.error('Error al cargar el menú:', error);
+        showError(error.message);
+      }
+    }
+
+    // Función para mostrar errores
+    function showError(message) {
+      document.getElementById('menuContainer').innerHTML = `
+        <div class="col-span-2 text-center py-8">
+          <p class="text-red-500">Error: ${message}</p>
+        </div>
+      `;
+    }
+
+    // Función para construir la ruta correcta de la imagen
+    function getImagePath(imageName) {
+      if (!imageName) return null;
+      
+      // Eliminar cualquier ruta completa que pueda estar en el nombre del archivo
+      const cleanName = imageName.split('\\').pop().split('/').pop();
+      
+      return baseImagePath + cleanName;
+    }
+
+    // Función para renderizar el menú
+    function renderMenu(data, categoria = 'Todo') {
+      const menuContainer = document.getElementById('menuContainer');
+      menuContainer.innerHTML = '';
+      
+      document.getElementById('dropdownButton').textContent = 
+        categoria === 'Todo' ? 'Todas las categorías ▼' : `${categoria} ▼`;
+      
+      const categories = categoria === 'Todo' 
+        ? Object.keys(data).filter(cat => data[cat].length > 0)
+        : [categoria];
+      
+      if (categories.length === 0) {
+        menuContainer.innerHTML = `
+          <div class="col-span-2 text-center py-8">
+            <p>No hay platillos disponibles.</p>
+          </div>
+        `;
+        return;
+      }
+      
+      categories.forEach(category => {
+        if (data[category]?.length > 0) {
+          const section = document.createElement('div');
+          section.className = 'mb-10';
+          section.innerHTML = `
+            <section class="mb-6">
+              <h3 class="text-2xl font-semibold mb-4 border-b pb-2 border-gray-300">${category}</h3>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6" id="${category.replace(' ', '')}Items"></div>
+            </section>
+          `;
+          menuContainer.appendChild(section);
+          
+          const itemsContainer = document.getElementById(`${category.replace(' ', '')}Items`);
+          data[category].forEach(plato => {
+            const itemDiv = document.createElement('div');
+            itemDiv.className = 'flex items-start bg-gray-50 p-4 rounded-lg shadow-sm hover:shadow-md transition-shadow';
+            
+            // Contenedor de imagen con manejo de errores
+            const imageContainer = document.createElement('div');
+            imageContainer.className = 'flex-shrink-0 mr-4';
+            
+            const img = document.createElement('img');
+            img.className = 'menu-image';
+            img.alt = plato.nombre;
+            img.onerror = function() {
+              this.style.display = 'none';
+              const placeholder = document.createElement('div');
+              placeholder.className = 'image-placeholder';
+              placeholder.innerHTML = '<svg class="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>';
+              imageContainer.appendChild(placeholder);
+            };
+            
+            // Obtener la ruta de la imagen
+            const imagePath = getImagePath(plato.imagen_url || plato.imagen_gxi);
+            if (imagePath) {
+              img.src = imagePath;
+            } else {
+              img.onerror(); // Activar el manejador de errores si no hay imagen
+            }
+            
+            imageContainer.appendChild(img);
+            itemDiv.appendChild(imageContainer);
+            
+            // Contenedor de texto
+            const textDiv = document.createElement('div');
+            textDiv.className = 'flex-grow';
+            textDiv.innerHTML = `
+              <h4 class="font-semibold text-lg mb-1">${plato.nombre}</h4>
+              <p class="text-gray-600 text-sm">${plato.descripcion || 'Descripción no disponible'}</p>
+            `;
+            itemDiv.appendChild(textDiv);
+            
+            itemsContainer.appendChild(itemDiv);
+          });
+        }
+      });
+    }
+
+    // Función para filtrar el menú
+    function filterMenu(categoria) {
+      currentCategory = categoria;
+      renderMenu(menuData, categoria);
+      // Cerrar el menú después de seleccionar una opción
+      document.getElementById('dropdownMenu').classList.remove('show');
+    }
+
+    // Event Listeners
+    document.addEventListener('DOMContentLoaded', () => {
+      loadMenuData();
+      
+      // Manejar clic en el botón del dropdown
+      document.getElementById('dropdownButton').addEventListener('click', function(e) {
+        e.stopPropagation();
+        document.getElementById('dropdownMenu').classList.toggle('show');
+      });
+      
+      // Cerrar el menú si se hace clic fuera de él
+      document.addEventListener('click', function() {
+        document.getElementById('dropdownMenu').classList.remove('show');
+      });
+      
+      // Prevenir que el menú se cierre cuando se hace clic dentro de él
+      document.getElementById('dropdownMenu').addEventListener('click', function(e) {
+        e.stopPropagation();
+      });
+      
+      document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.preventDefault();
+          filterMenu(e.target.dataset.categoria);
+        });
+      });
+    });
+  </script>
+</body>
+</html>
